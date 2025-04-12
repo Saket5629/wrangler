@@ -269,17 +269,17 @@ Column
  : ':' [a-zA-Z_\-] [:a-zA-Z_0-9\-]*
  ;
 
+String
+ : '\'' ( EscapeSequence | ~('\'') )* '\''
+ | '"'  ( EscapeSequence | ~('"') )* '"'
+ ;
+
  BYTE_SIZE
  : Number BYTE_UNIT
  ;
 
 TIME_DURATION
  : Number TIME_UNIT
- ;
-
-String
- : '\'' ( EscapeSequence | ~('\'') )* '\''
- | '"'  ( EscapeSequence | ~('"') )* '"'
  ;
 
 EscapeSequence
@@ -320,7 +320,7 @@ fragment Digit
  : [0-9]
  ;
 
-fragment BYTE_UNIT
+ fragment BYTE_UNIT
  : [kKmMgGtT][bB]
  ;
 
