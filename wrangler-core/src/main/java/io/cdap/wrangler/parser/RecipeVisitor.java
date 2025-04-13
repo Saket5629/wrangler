@@ -16,12 +16,23 @@
 
 package io.cdap.wrangler.parser;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.misc.Interval;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
 import io.cdap.wrangler.api.LazyNumber;
 import io.cdap.wrangler.api.RecipeSymbol;
 import io.cdap.wrangler.api.SourceInfo;
 import io.cdap.wrangler.api.Triplet;
 import io.cdap.wrangler.api.parser.Bool;
 import io.cdap.wrangler.api.parser.BoolList;
+import io.cdap.wrangler.api.parser.ByteSize;
 import io.cdap.wrangler.api.parser.ColumnName;
 import io.cdap.wrangler.api.parser.ColumnNameList;
 import io.cdap.wrangler.api.parser.DirectiveName;
@@ -33,17 +44,8 @@ import io.cdap.wrangler.api.parser.Properties;
 import io.cdap.wrangler.api.parser.Ranges;
 import io.cdap.wrangler.api.parser.Text;
 import io.cdap.wrangler.api.parser.TextList;
+import io.cdap.wrangler.api.parser.TimeDuration;
 import io.cdap.wrangler.api.parser.Token;
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.misc.Interval;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * This class <code>RecipeVisitor</code> implements the visitor pattern
  * used during traversal of the AST tree. The <code>ParserTree#Walker</code>
@@ -300,6 +302,27 @@ public final class RecipeVisitor extends DirectivesBaseVisitor<RecipeSymbol.Buil
     builder.addToken(new BoolList(booleans));
     return builder;
   }
+
+ @Override
+public RecipeSymbol.Builder visitValue(DirectivesParser.ValueContext ctx) {
+  String tokenText = ctx.getText();
+
+  if (ctx.BYTE_SIZE() != null) {
+    builder.addToken(new ByteSize(tokenText));
+  } else if (ctx.TIME_DURATION() != null) {
+    builder.addToken(new TimeDuration(tokenText));
+  } else if (ctx.Number() != null) {
+    builder.addToken(new Numeric(new LazyNumber(tokenText)));
+  } else if (ctx.Bool() != null) {
+    builder.addToken(new Bool(Boolean.parseBoolean(tokenText)));
+  } else if (ctx.String() != null) {
+    builder.addToken(new Text(tokenText.substring(1, tokenText.length() - 1)));
+  } else if (ctx.Column() != null) {
+    builder.addToken(new ColumnName(tokenText.substring(1)));
+  }
+
+  return builder;
+}
 
   /**
    * This visitor methods extracts the list of strings specified. It creates a token
