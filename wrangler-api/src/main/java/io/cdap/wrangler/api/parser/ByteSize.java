@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017-2019 Cask Data, Inc.
+ * Copyright © 2025.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,62 +13,114 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.cdap.wrangler.api.parser;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 
-/**
- * ByteSize Token - parses string like "10MB" and gives bytes.
- */
-public class ByteSize implements Token {
-  private final String originalValue;
-  private final long bytes;
+ package io.cdap.wrangler.api.parser;
 
-  public ByteSize(String value) {
-    this.originalValue = value;
+ import java.util.regex.Matcher;
+ import java.util.regex.Pattern;
 
-    String input = value.trim().toLowerCase();
-
-    if (input.endsWith("kb")) {
-      bytes = (long)(Double.parseDouble(input.replace("kb", "")) * 1024);
-    } else if (input.endsWith("mb")) {
-      bytes = (long)(Double.parseDouble(input.replace("mb", "")) * 1024 * 1024);
-    } else if (input.endsWith("gb")) {
-      bytes = (long)(Double.parseDouble(input.replace("gb", "")) * 1024 * 1024 * 1024);
-    } else if (input.endsWith("b")) {
-      bytes = (long)(Double.parseDouble(input.replace("b", "")));
-    } else {
-      // fallback: assume it's already in bytes
-      bytes = Long.parseLong(input.replaceAll("[^\\d]", ""));
-    }
-  }
-
-  @Override
-  public Object value() {
-    return originalValue;
-  }
-
-  @Override
-  public TokenType type() {
-    return TokenType.BYTE_SIZE;
-  }
-
-  public long getBytes() {
-    return bytes;
-  }
-
-  @Override
-public String toString() {
-  return "ByteSize(" + bytes + " bytes)";
-}
-
-  @Override
-  public JsonElement toJson() {
-    JsonObject object = new JsonObject();
-    object.addProperty("type", "byte_size");
-    object.addProperty("value", originalValue);
-    object.addProperty("bytes", bytes);
-    return object;
-  }
-}
+ import com.google.gson.JsonElement;
+ import com.google.gson.JsonObject;
+ 
+ 
+ /**
+  * Class for parsing byte sizes. (e.g. 10KB, 1MB, 2.5MB, 3.5GB)
+  */
+ public class ByteSize implements Token {
+ 
+     private static final Pattern BYTE_PATTERN = Pattern.compile("(\\d+(\\.\\d+)?)([KMG]B)", Pattern.CASE_INSENSITIVE);
+     private Double value;
+     private String unit;
+ 
+     /**
+      * Constructs {@code ByteSize} object from the given text
+      *
+      * @param text String representation of the byte size (e.g. 10KB, 1MB, 2.5MB, 3.5GB)
+      * @throws IllegalArgumentException if the given text is not a valid byte size
+      */
+     public ByteSize(String text) {
+         Matcher matcher = BYTE_PATTERN.matcher(text.trim());
+         if (matcher.matches()) {
+             this.value = Double.parseDouble(matcher.group(1));
+             this.unit = matcher.group(3).toUpperCase();
+         } else {
+             throw new IllegalArgumentException("Invalid byte size: " + text);
+         }
+     }
+ 
+     /**
+      * Returns the value of the byte size
+      *
+      * @return value
+      */
+     public Double getValue() {
+         return value;
+     }
+ 
+     /**
+      * Returns the unit of the byte size
+      *
+      * @return unit
+      */
+     public String getUnit() {
+         return unit;
+     }
+ 
+     /**
+      * Returns the byte size in bytes
+      * @return bytes
+      * @throws IllegalArgumentException if the unit is not "B", "K", "M", or "G"
+      */
+     public Double getBytes() {
+         switch (unit) {
+             case "B":
+                 return value;
+             case "KB":
+                 return value * 1024.0;
+             case "MB":
+                 return value * 1024.0 * 1024.0;
+             case "GB":
+                 return value * 1024.0 * 1024.0 * 1024.0;
+             default:
+                 throw new IllegalArgumentException("Invalid unit: " + unit);
+         }
+     }
+ 
+     public static Double convertByteToUnit(Double value, String unit) {
+         if (value == 0) {
+             return 0.0;
+         }
+         switch (unit.toUpperCase()) {
+             case "B":
+                 return value;
+             case "KB":
+                 return value / 1024.0;
+             case "MB":
+                 return value / 1024.0 / 1024.0;
+             case "GB":
+                 return value / 1024.0 / 1024.0 / 1024.0;
+             default:
+                 throw new IllegalArgumentException("Invalid unit: " + unit);
+         }
+     }
+ 
+     @Override
+     public Object value() {
+         return value;
+     }
+ 
+     @Override
+     public TokenType type() {
+         return TokenType.BYTE_SIZE;
+     }
+ 
+     @Override
+     public JsonElement toJson() {
+         JsonObject object = new JsonObject();
+         object.addProperty("type", TokenType.BYTE_SIZE.name());
+         object.addProperty("value", value);
+         object.addProperty("unit", unit);
+         return object;
+     }
+ }
